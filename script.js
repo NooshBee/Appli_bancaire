@@ -110,7 +110,7 @@ function spawnFloatingFlower(flower){
   el.style.setProperty("--dx2", `${rand(-30, 30)}vw`);
   el.style.setProperty("--dy2", `${rand(-35, 35)}vh`);
 
-  const duration = rand(6.5, 12);
+  const duration = rand(2200, 3400);
   const delay = rand(0, 1.2);
   el.style.animation = `drift ${duration}s ease-in-out ${delay}s infinite alternate`;
 
