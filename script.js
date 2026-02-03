@@ -119,7 +119,6 @@ const FLOWERS = [
     message: "Encore une belle fleur… mais la bonne fleur, c’est celle qui me mène à toi. Pas un bougainvillier."
   }
 ];
- // (NE RIEN METTRE ICI, tu colles le tableau FLOWERS ici à la place de ce commentaire)
 
 
 // ======================
