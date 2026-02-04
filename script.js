@@ -555,7 +555,7 @@ function launchBurst(includeBougain){
   if (!burst) return;
   burst.innerHTML = "";
 
-  const base = ["🍇","✨","💐"];
+  const base = ["🍇","✨","💐","🎉"];
   if (includeBougain) base.push("🌸");
 
   const petalsCount = 80;
