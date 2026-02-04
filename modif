@@ -1,0 +1,71 @@
+function setupTapToOpenGift(includeBougain){
+  let giftBtn = document.getElementById("giftBtn");
+  if (!giftBtn) return;
+
+  // reset variables (PAS d'animation none ici)
+  giftBtn.style.setProperty("--lid-rot", "0deg");
+  giftBtn.style.setProperty("--lid-up", "0px");
+  giftBtn.style.setProperty("--box-scale", "1");
+  giftBtn.style.removeProperty("animation"); // ✅ laisse l'animation CSS vivre
+
+  // clone propre pour éviter empilement listeners
+  const newBtn = giftBtn.cloneNode(true);
+  giftBtn.parentNode.replaceChild(newBtn, giftBtn);
+
+  // ✅ IMPORTANT : on FORCE la secousse au moment où le cadeau apparaît
+  newBtn.style.animation = "giftShake 3.2s ease-in-out infinite";
+
+  const TOTAL_TAPS = 4;
+  let taps = 0;
+  let giftOpened = false;
+
+  newBtn.addEventListener("click", () => {
+    // ✅ stop secousse dès le 1er tap
+    newBtn.style.animation = "none";
+
+    if (giftOpened) return;
+
+    taps += 1;
+    const progress = Math.min(1, taps / TOTAL_TAPS);
+
+    newBtn.style.setProperty("--lid-rot", `${-35 * progress}deg`);
+    newBtn.style.setProperty("--lid-up", `${-8 * progress}px`);
+
+    const scale = 1 + (progress * 0.22);
+    newBtn.style.setProperty("--box-scale", String(scale));
+
+    if (taps >= TOTAL_TAPS){
+      giftOpened = true;
+
+      // gonflage automatique (continue)
+      newBtn.style.animation = "autoInflate 1100ms ease-in forwards";
+
+      setTimeout(() => {
+        gift.classList.add("hidden");
+
+        // coeur explose en même temps (tu l’as déjà)
+        explodeHeart(650);
+
+        // confettis (si tu veux encore)
+        burst.classList.remove("hidden");
+        launchBurst(includeBougain);
+
+        setTimeout(() => {
+          burst.classList.add("hidden");
+          lockFlowersClicks(false);
+          resumeFloating();
+          resetToHome();
+        }, 2800);
+
+      }, 1150);
+    }
+  });
+}
+
+
+
+
+
+
+
+<link rel="stylesheet" href="style.css?v=124" />
