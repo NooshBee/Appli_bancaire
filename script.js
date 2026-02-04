@@ -428,6 +428,24 @@ function setHeartBeat(on){
   }
 }
 
+function resumeFloating(){
+  // enlève le coeur qui bat
+  setHeartBeat(false);
+
+  // redonne des vitesses et relance les rebonds
+  for (const s of flowersState){
+    const speed = rand(BOUNCE_SPEED_MIN, BOUNCE_SPEED_MAX);
+    const ang = rand(0, Math.PI * 2);
+    s.vx = Math.cos(ang) * speed;
+    s.vy = Math.sin(ang) * speed;
+
+    s.el.style.pointerEvents = "auto";
+  }
+
+  isLocked = false;
+  startAnimation();
+}
+
 // ======================
 // GIFT SEQUENCE
 // ======================
@@ -494,11 +512,11 @@ function setupTapToOpenGift(includeBougain){
         launchBurst(includeBougain);
 
         setTimeout(() => {
-          burst.classList.add("hidden");
-          resetToHome();
-          lockFlowersClicks(false);
-          buildField();
-        }, 2800);
+  burst.classList.add("hidden"); // si tu gardes burst
+  resumeFloating();              // ✅ fleurs repartent flotter
+  resetToHome();                 // (si tu veux revenir à l’accueil)
+  buildField();                  // (si tu veux regénérer le champ)
+}, 2800);
       }, 1150);
     }
   });
