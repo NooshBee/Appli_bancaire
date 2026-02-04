@@ -377,28 +377,38 @@ function setupTapToOpenGift(includeBougain){
   let giftOpened = false;
 
   newBtn.addEventListener("click", () => {
-    if (giftOpened) return;
+  if (giftOpened) return;
 
-    openProgress = Math.min(1, openProgress + 0.18);
-    newBtn.style.setProperty("--lid-rot", `${-35 * openProgress}deg`);
-    newBtn.style.setProperty("--lid-up", `${-8 * openProgress}px`);
+  // 6 taps environ (0.18 * 6 = 1.08)
+  openProgress = Math.min(1, openProgress + 0.25);
 
-    if (openProgress >= 1){
-      giftOpened = true;
-      newBtn.style.animation = "inflate 900ms ease-in-out forwards";
+  // ouverture du couvercle
+  newBtn.style.setProperty("--lid-rot", `${-35 * openProgress}deg`);
+  newBtn.style.setProperty("--lid-up", `${-8 * openProgress}px`);
+
+  // gonflage progressif EN MÊME TEMPS que l'ouverture
+  const scale = 1 + (openProgress * 0.22); // 1.00 -> 1.14
+  newBtn.style.transform = `scale(${scale})`;
+
+  // dernier tap = auto gonflage + explosion
+  if (openProgress >= 1){
+    giftOpened = true;
+
+    // auto gonflage (sans avoir besoin de retaper)
+    newBtn.style.animation = "autoInflate 1100ms ease-in forwards";
+
+    setTimeout(() => {
+      gift.classList.add("hidden");
+      burst.classList.remove("hidden");
+      launchBurst(includeBougain);
 
       setTimeout(() => {
-        gift.classList.add("hidden");
-        burst.classList.remove("hidden");
-        launchBurst(includeBougain);
-
-        setTimeout(() => {
-          resetToHome();
-          buildField();
-        }, 2800);
-      }, 950);
-    }
-  });
+        resetToHome();
+        buildField();
+      }, 2800);
+    }, 1150);
+  }
+});
 }
 
 // ======================
