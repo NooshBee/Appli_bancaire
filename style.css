@@ -36,18 +36,24 @@ body{
    HEADER D’ACCUEIL (fade)
    ========================= */
 .top{
-  position:absolute;
-  left:50%;
-  top:45%;
+  position: absolute;
+  left: 50%;
+  top: 45%;
   transform: translate(-50%, -50%);
-  text-align:center;
-  width: min(520px, 92vw);
-  z-index: 5;
-  pointer-events:none;
-  margin:0;
-  padding: 0 10px;
+  text-align: center;
+  width: min(420px, 88vw);
+  z-index: 10;
+  pointer-events: none;
 
-  transition: opacity 220ms ease, transform 220ms ease;
+  /* 👇 fond opaque élégant */
+  background: rgba(26, 16, 51, 0.82); /* proche de ton bg */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  padding: 18px 20px;
+  border-radius: 20px;
+
+  box-shadow: 0 14px 40px rgba(0,0,0,0.35);
 }
 
 /* Classe utilisée par le JS */
