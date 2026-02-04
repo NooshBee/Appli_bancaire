@@ -5,11 +5,11 @@ const TARGET_ID = "bougain";
 const MESSAGE_SECONDS = 0;
 
 const MIN_PER_VARIETY = 3; // 3 de chaque variété => 54
-const FLOW_SIZE = 54;
+const FLOW_SIZE = 54;      // taille des bulles (doit matcher ton CSS .flower width/height)
 const RADIUS = FLOW_SIZE / 2;
 
-const BOUNCE_SPEED_MIN = 18;
-const BOUNCE_SPEED_MAX = 42;
+const BOUNCE_SPEED_MIN = 18; // px/s (lent)
+const BOUNCE_SPEED_MAX = 42; // px/s (plus vivant)
 
 // --- FLOWERS ---
 const FLOWERS = [
@@ -65,12 +65,8 @@ let proposalInterval = null;
 let animId = null;
 let lastT = null;
 
-// 54 fleurs
+// 54 fleurs “physiques”
 const flowersState = []; // { flower, el, x, y, vx, vy }
-
-// ===== bouquet overlay (créé dynamiquement si absent) =====
-let bouquetOverlay = null;
-let bouquetTextEl = null;
 
 // ======================
 // HELPERS
@@ -91,36 +87,11 @@ function clearTimers(){
   countdownTimer = null;
 }
 
-function ensureBouquetOverlay(){
-  if (bouquetOverlay) return;
-
-  const main = document.querySelector(".app") || document.body;
-
-  bouquetOverlay = document.createElement("section");
-  bouquetOverlay.id = "bouquet";
-  bouquetOverlay.className = "bouquet hidden";
-  bouquetOverlay.setAttribute("aria-live", "polite");
-
-  bouquetOverlay.innerHTML = `
-    <div class="bouquetWrap">
-      <div class="bouquetCard">
-        <div class="bouquetTitle">💐</div>
-        <div class="bouquetMsg">Un bouquet pour toi…</div>
-      </div>
-    </div>
-  `;
-
-  main.appendChild(bouquetOverlay);
-  bouquetTextEl = bouquetOverlay.querySelector(".bouquetMsg");
-}
-
 function hideAllScreens(){
   overlay.classList.add("hidden");
   proposal.classList.add("hidden");
   gift.classList.add("hidden");
   burst.classList.add("hidden");
-
-  if (bouquetOverlay) bouquetOverlay.classList.add("hidden");
 }
 
 function resetToHome(){
@@ -155,7 +126,7 @@ function stopProposalTimer(){
   proposalInterval = null;
 }
 
-// Zone “carte d’accueil” : rebond
+// Zone “carte d’accueil” : on rebondit dessus
 function getCardRect(){
   const card = document.querySelector(".topCard") || document.querySelector(".top");
   if (!card) return null;
@@ -165,6 +136,7 @@ function getCardRect(){
   return { left: r.left - pad, right: r.right + pad, top: r.top - pad, bottom: r.bottom + pad };
 }
 
+// Test cercle vs rect (simple)
 function circleIntersectsRect(cx, cy, radius, rect){
   const closestX = Math.max(rect.left, Math.min(cx, rect.right));
   const closestY = Math.max(rect.top, Math.min(cy, rect.bottom));
@@ -303,7 +275,7 @@ function stepPhysics(dt){
 }
 
 // ======================
-// BOUQUET (Option A) — rassemblement des fleurs
+// CLICK LOCK HELPERS
 // ======================
 function lockFlowersClicks(lock){
   for (const s of flowersState){
@@ -311,14 +283,22 @@ function lockFlowersClicks(lock){
   }
 }
 
+// ======================
+// BOUQUET ANIM (Option A)
+// ======================
 function gatherFlowersToBouquet(durationMs = 1200){
   return new Promise((resolve) => {
+    // stop rebonds
     stopAnimation();
+
+    // évite que des cartes s’ouvrent pendant l’anim
     isLocked = true;
     lockFlowersClicks(true);
 
     const w = window.innerWidth;
     const h = window.innerHeight;
+
+    // centre “bouquet”
     const cx = w * 0.5;
     const cy = h * 0.48;
 
@@ -327,7 +307,7 @@ function gatherFlowersToBouquet(durationMs = 1200){
     for (let i = 0; i < total; i++){
       const s = flowersState[i];
 
-      const t = i / (total - 1);
+      const t = i / Math.max(1, (total - 1));
       const angle = t * Math.PI * 2;
 
       const rx = 70;
@@ -337,7 +317,6 @@ function gatherFlowersToBouquet(durationMs = 1200){
       const ty = cy + Math.sin(angle) * ry + rand(-14, 14);
 
       s.el.style.transition = `transform ${durationMs}ms cubic-bezier(.2,.9,.2,1)`;
-
       s.x = tx;
       s.y = ty;
       renderOne(s);
@@ -352,29 +331,16 @@ function gatherFlowersToBouquet(durationMs = 1200){
   });
 }
 
-// Sequence : bouquet (2s total) puis demande
+// ✅ CHAÎNE FIXE : overlay -> fermeture -> bouquet -> (2s) -> demande
 async function bouquetThenProposal(){
-  ensureBouquetOverlay();
-
-  hideAllScreens();
-  if (topHeader) topHeader.classList.add("hideTop");
-
-  // on montre une petite carte "bouquet"
-  bouquetOverlay.classList.remove("hidden");
-  if (bouquetTextEl) bouquetTextEl.textContent = "Regarde… 🌸";
-
-  // on rassemble les fleurs (1.2s)
   await gatherFlowersToBouquet(1200);
 
-  // le total demandé = 2s avant la demande
-  const remaining = Math.max(0, 2000 - 1200);
-
   setTimeout(() => {
-    bouquetOverlay.classList.add("hidden");
     proposal.classList.remove("hidden");
     startProposalTimer();
-    isLocked = false; // boutons OK
-  }, remaining);
+    isLocked = false;
+    lockFlowersClicks(true); // on laisse bloqué pendant la demande
+  }, 2000);
 }
 
 // ======================
@@ -401,7 +367,7 @@ function showOverlay(flower, onDone){
   const card = overlay.querySelector(".card");
   if (!card) return;
 
-  // crée hint si absent
+  // Si tu n’as plus <p class="hint"> dans le HTML, on le crée
   let hint = overlay.querySelector(".hint");
   if (!hint){
     hint = document.createElement("p");
@@ -421,6 +387,7 @@ function showOverlay(flower, onDone){
     if (typeof onDone === "function") onDone();
   };
 
+  // fermeture en touchant la carte
   card.addEventListener("pointerdown", close);
   card.addEventListener("touchstart", close, { passive: true });
 }
@@ -430,13 +397,20 @@ function onFlowerClick(flower){
 
   const isTarget = (flower.id === TARGET_ID);
 
+  // mauvaise fleur -> overlay -> retour home
   if (!isTarget){
     showOverlay(flower, () => resetToHome());
     return;
   }
 
-  // ✅ bougain : overlay -> fermeture -> bouquet -> demande
+  // ✅ bonne fleur -> overlay -> fermeture -> bouquet -> demande
   showOverlay(flower, async () => {
+    hideAllScreens();
+    if (topHeader) topHeader.classList.add("hideTop");
+
+    // IMPORTANT : éviter interactions pendant la suite
+    lockFlowersClicks(true);
+
     await bouquetThenProposal();
   });
 }
@@ -450,7 +424,10 @@ async function playGiftSequence(includeBougain){
   if (topHeader) topHeader.classList.add("hideTop");
   stopProposalTimer();
 
-  // ⏳ 2s avant le cadeau (comme tu voulais)
+  // (Ici tu peux choisir de refaire un bouquet avant cadeau ou non)
+  // await gatherFlowersToBouquet(900);
+
+  // délai 2s avant cadeau (tu voulais 2s au lieu de 5s)
   setTimeout(() => {
     gift.classList.remove("hidden");
     setupTapToOpenGift(includeBougain);
@@ -470,35 +447,43 @@ function setupTapToOpenGift(includeBougain){
   const newBtn = giftBtn.cloneNode(true);
   giftBtn.parentNode.replaceChild(newBtn, giftBtn);
 
-  let openProgress = 0;
+  // ✅ 4 taps (4 août)
+  const TOTAL_TAPS = 4;
+  let taps = 0;
   let giftOpened = false;
 
   newBtn.addEventListener("click", () => {
     if (giftOpened) return;
 
-    // ✅ 4 taps (0.25 x 4 = 1)
-    openProgress = Math.min(1, openProgress + 0.25);
+    taps += 1;
+    const progress = Math.min(1, taps / TOTAL_TAPS);
 
-    // ouverture + gonflage à chaque tap
-    newBtn.style.setProperty("--lid-rot", `${-35 * openProgress}deg`);
-    newBtn.style.setProperty("--lid-up", `${-8 * openProgress}px`);
+    // ouverture progressive
+    newBtn.style.setProperty("--lid-rot", `${-35 * progress}deg`);
+    newBtn.style.setProperty("--lid-up", `${-8 * progress}px`);
 
-    const scale = 1 + (openProgress * 0.22); // 1 -> 1.22
+    // gonflage progressif à CHAQUE tap
+    const scale = 1 + (progress * 0.22); // 1.00 -> 1.22
     newBtn.style.setProperty("--box-scale", String(scale));
 
-    if (openProgress >= 1){
+    // dernier tap -> gonflage automatique continu (sans dégonfler)
+    if (taps >= TOTAL_TAPS){
       giftOpened = true;
 
-      // ✅ continue à gonfler seule jusqu’à explosion
+      // part du scale courant
       newBtn.style.animation = "autoInflate 1100ms ease-in forwards";
 
       setTimeout(() => {
         gift.classList.add("hidden");
+
+        // si tu ne veux plus de confettis / burst : commente ces 3 lignes
         burst.classList.remove("hidden");
         launchBurst(includeBougain);
 
         setTimeout(() => {
+          burst.classList.add("hidden");
           resetToHome();
+          lockFlowersClicks(false);
           buildField();
         }, 2800);
       }, 1150);
@@ -507,9 +492,10 @@ function setupTapToOpenGift(includeBougain){
 }
 
 // ======================
-// EXPLOSION
+// EXPLOSION (confettis)
 // ======================
 function launchBurst(includeBougain){
+  if (!burst) return;
   burst.innerHTML = "";
 
   const base = ["💖","✨","💐"];
@@ -548,6 +534,5 @@ window.addEventListener("resize", () => buildField());
 // ======================
 // INIT
 // ======================
-ensureBouquetOverlay();
 resetToHome();
 buildField();
