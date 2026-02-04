@@ -10,6 +10,7 @@
 
 *{ box-sizing: border-box; }
 html,body{ height:100%; }
+
 body{
   margin:0;
   color: var(--text);
@@ -25,6 +26,7 @@ body{
   padding: 0;
 }
 
+/* Les écrans overlay au-dessus */
 .overlay,
 .proposal,
 .gift,
@@ -33,45 +35,70 @@ body{
 }
 
 /* =========================
-   HEADER D’ACCUEIL (fade)
+   HEADER D’ACCUEIL (CARTE)
    ========================= */
 .top{
   position: absolute;
   left: 50%;
   top: 45%;
   transform: translate(-50%, -50%);
-  text-align: center;
-  width: min(420px, 88vw);
   z-index: 10;
   pointer-events: none;
+  text-align: center;
+  width: min(520px, 92vw);
+}
 
-  /* 👇 fond opaque élégant */
-  background: rgba(26, 16, 51, 0.82); /* proche de ton bg */
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+.topCard{
+  display: inline-block;
+  padding: 18px 22px;
+  border-radius: 22px;
 
-  padding: 18px 20px;
-  border-radius: 20px;
+  background: rgba(26, 16, 51, 0.82);
+  border: 1px solid rgba(255,255,255,0.10);
+
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 
   box-shadow: 0 14px 40px rgba(0,0,0,0.35);
 }
 
-/* Classe utilisée par le JS */
+/* Le JS applique .hideTop sur .top */
 .top.hideTop{
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.98);
   pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
 }
 
-h1{
-  margin:0;
-  font-size: 1.55rem;
-  letter-spacing: 0.2px;
-}
 #subtitle{
-  margin:8px 0 0 0;
+  margin: 10px 0 0 0;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+/* Titre + emoji */
+.title-text{
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+}
+
+.title-emoji{
+  margin: 10px 0 0 0;
+  font-size: 3.2rem;
+  line-height: 1;
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes breathe{
+  0%,100%{ transform: scale(1); }
+  50%{ transform: scale(1.08); }
+}
+
+@media (max-width: 480px){
+  .title-text{ font-size: 1.8rem; }
+  .title-emoji{ font-size: 3.4rem; }
 }
 
 /* =========================
@@ -80,10 +107,6 @@ h1{
 .field{
   position:absolute;
   inset: 0;
-  margin: 0;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
   overflow:hidden;
 }
 
@@ -101,11 +124,27 @@ h1{
   user-select:none;
   -webkit-tap-highlight-color: transparent;
   cursor:pointer;
-  transform: translate(-50%,-50%);
+
+  /* IMPORTANT: l’anim JS utilise transform */
+  will-change: transform;
 }
 
 .flower:active{
   transform: translate(-50%,-50%) scale(0.95);
+}
+
+.flowerImg{
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  pointer-events:none;
+}
+
+.bougainGlow{
+  box-shadow:
+    0 10px 25px rgba(0,0,0,0.25),
+    0 0 18px rgba(255, 105, 180, 0.35);
+  border-color: rgba(255, 105, 180, 0.25);
 }
 
 /* =========================
@@ -119,9 +158,9 @@ h1{
   padding: 18px;
   background: rgba(0,0,0,0.45);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-/* Écrans masqués */
 .hidden{ display:none; }
 
 .card{
@@ -139,15 +178,23 @@ h1{
   margin-bottom: 8px;
 }
 
+.overlayImg{
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
 #overlayTitle{
   margin: 6px 0 4px 0;
   font-size: 1.25rem;
 }
+
 #overlayText{
   margin: 8px 0 6px 0;
   color: rgba(255,255,255,0.90);
   line-height: 1.35;
 }
+
 .hint{
   margin: 10px 0 0 0;
   color: rgba(255,255,255,0.70);
@@ -296,112 +343,4 @@ h1{
   10%  { opacity:1; }
   70%  { opacity:1; }
   100% { opacity:0; transform: translate(var(--dx), var(--dy)) scale(1.2) rotate(var(--rot)); }
-}
-
-@keyframes drift {
-  0%   { transform: translate(-50%,-50%) translate(0,0); opacity: 0; }
-  10%  { opacity: 1; }
-  50%  { transform: translate(-50%,-50%) translate(var(--dx1), var(--dy1)); }
-  100% { transform: translate(-50%,-50%) translate(var(--dx2), var(--dy2)); opacity: 1; }
-}
-
-/* =========================
-   IMAGES PNG
-   ========================= */
-.flowerImg{
-  width: 34px;
-  height: 34px;
-  object-fit: contain;
-  pointer-events:none;
-}
-
-.bougainGlow{
-  box-shadow:
-    0 10px 25px rgba(0,0,0,0.25),
-    0 0 18px rgba(255, 105, 180, 0.35);
-  border-color: rgba(255, 105, 180, 0.25);
-}
-
-.overlayImg{
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-}
-
-/* ===== Titre d'accueil ===== */
-.title-text{
-  font-size: 1.9rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-/* Emoji sous le titre */
-.title-emoji{
-  font-size: 3.2rem;
-  line-height: 1;
-  margin: 0;
-
-  /* petite animation douce */
-  animation: breathe 2.4s ease-in-out infinite;
-}
-
-/* Animation respiration */
-@keyframes breathe{
-  0%,100%{ transform: scale(1); }
-  50%{ transform: scale(1.08); }
-}
-
-/* Ajustement spécial iPhone */
-@media (max-width: 480px){
-  .title-text{
-    font-size: 1.8rem;
-  }
-  .title-emoji{
-    font-size: 3.4rem;
-  }
-}
-
-.hideTop{
-  opacity: 0;
-  pointer-events: none;
-  
-  /* --- HEADER CARD (opaque) --- */
-.top{
-  position:absolute;
-  left:50%;
-  top:45%;
-  transform: translate(-50%, -50%);
-  z-index: 50;
-  pointer-events:none;
-  width: min(520px, 92vw);
-  text-align:center;
-}
-
-/* La carte opaque */
-.top .topCard{
-  display:inline-block;
-  padding: 18px 22px;
-  border-radius: 22px;
-
-  background: rgba(26, 16, 51, 0.82); /* violet opaque */
-  border: 1px solid rgba(255,255,255,0.10);
-
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-
-  box-shadow: 0 14px 40px rgba(0,0,0,0.35);
-}
-
-/* Le texte */
-.top h1{
-  margin: 0;
-  font-size: 1.65rem;
-}
-
-/* L’emoji */
-.top .topEmoji{
-  margin-top: 10px;
-  font-size: 3rem;
-  line-height: 1;
-}
 }
