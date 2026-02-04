@@ -502,6 +502,7 @@ function setupTapToOpenGift(includeBougain){
   let giftOpened = false;
 
   newBtn.addEventListener("click", () => {
+    newBtn.style.animation = "none";
     if (giftOpened) return;
 
     taps += 1;
