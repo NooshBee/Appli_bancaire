@@ -256,8 +256,51 @@ function spawnFloatingFlower(flower){
 
 const MIN_PER_VARIETY = 3;
 
+const MIN_PER_VARIETY = 3;
+
+// grille 6 colonnes x 9 lignes = 54 cases
+const GRID_COLS = 6;
+const GRID_ROWS = 9;
+
 function buildField(){
   field.innerHTML = "";
+
+  // 1) On fabrique exactement 54 entrées: 3 fois chaque fleur
+  const list = [];
+  FLOWERS.forEach(f => {
+    for (let i = 0; i < MIN_PER_VARIETY; i++) list.push(f);
+  });
+
+  // 2) On mélange pour répartir les variétés partout
+  shuffleInPlace(list);
+
+  // 3) On place sur une grille (avec petit décalage)
+  list.forEach((flower, idx) => {
+    const col = idx % GRID_COLS;
+    const row = Math.floor(idx / GRID_COLS);
+
+    // centre de la cellule en %
+    const cellW = 100 / GRID_COLS;
+    const cellH = 100 / GRID_ROWS;
+
+    const baseX = (col + 0.5) * cellW;
+    const baseY = (row + 0.5) * cellH;
+
+    // petit jitter pour que ce soit organique
+    const jitterX = rand(-cellW * 0.18, cellW * 0.18);
+    const jitterY = rand(-cellH * 0.18, cellH * 0.18);
+
+    spawnFloatingFlower(flower, idx, baseX + jitterX, baseY + jitterY);
+  });
+}
+
+// utilitaire shuffle
+function shuffleInPlace(arr){
+  for (let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
 
   FLOWERS.forEach(flower => {
     for (let i = 0; i < MIN_PER_VARIETY; i++){
