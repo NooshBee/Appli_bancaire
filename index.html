@@ -60,7 +60,13 @@
     </footer>
   </main>
   
-<script src="script.js?v=1000"></script>
+  <script>
+  window.SCRIPT_LOADED = false;
+</script>
+
+<script src="script.js?v=1000" onload="window.SCRIPT_LOADED=true"></script>
+
+<script src="script.js?v=123"></script>
 
 </body>
 </html>
