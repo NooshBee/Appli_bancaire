@@ -327,9 +327,14 @@ function showOverlay(flower, onDone){
 
   const card = overlay.querySelector(".card");
 
-  // Indication utilisateur
-  const hint = overlay.querySelector(".hint");
-  if (hint) hint.innerHTML = "👆🏾 Touche la carte pour réessayer 👆🏾 ";
+  // Indication utilisateur (différente si c’est la bonne fleur)
+const hint = overlay.querySelector(".hint");
+const isTarget = (flower.id === TARGET_ID);
+
+if (hint){
+  hint.innerHTML = isTarget
+    ? "Bien joué sexy ! 🥳😂"
+    : "👆🏾 Touche la carte pour réessayer 👆🏾";
 
   const close = () => {
     overlay.classList.add("hidden");
