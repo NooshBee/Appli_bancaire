@@ -2,7 +2,7 @@
 // CONFIG
 // ======================
 const TARGET_ID = "bougain";
-const MESSAGE_SECONDS = 15;
+const MESSAGE_SECONDS = 0;
 
 const MIN_PER_VARIETY = 3; // 3 de chaque variété => 54
 const FLOW_SIZE = 54;      // taille des bulles (doit matcher ton CSS .flower width/height)
@@ -86,6 +86,7 @@ function clearTimers(){
   if (countdownTimer) clearInterval(countdownTimer);
   overlayTimer = null;
   countdownTimer = null;
+  countdownEl.textContent = "";
 }
 
 function hideAllScreens(){
@@ -311,8 +312,8 @@ function stepPhysics(dt){
 function showOverlay(flower, onDone){
   isLocked = true;
   hideAllScreens();
-  if (topHeader) topHeader.classList.add("hideTop");
 
+  // image dans l’overlay
   overlayFlower.innerHTML = "";
   const big = document.createElement("img");
   big.src = flower.img;
@@ -326,21 +327,28 @@ function showOverlay(flower, onDone){
 
   overlay.classList.remove("hidden");
 
-  let remaining = MESSAGE_SECONDS;
-  countdownEl.textContent = remaining;
+  // On cache le compteur (si tu veux le laisser dans le HTML, on le neutralise)
+  countdownEl.textContent = "";
 
   clearTimers();
 
-  countdownTimer = setInterval(() => {
-    remaining -= 1;
-    countdownEl.textContent = Math.max(0, remaining);
-  }, 1000);
+  // Fermer en cliquant en dehors de la carte
+  const card = overlay.querySelector(".card");
 
-  overlayTimer = setTimeout(() => {
-    clearTimers();
+  const close = () => {
     overlay.classList.add("hidden");
+    overlay.removeEventListener("click", onOverlayClick);
     if (typeof onDone === "function") onDone();
-  }, MESSAGE_SECONDS * 1000);
+  };
+
+  const onOverlayClick = (e) => {
+    // si on clique DANS la carte => on ne ferme pas
+    if (card && card.contains(e.target)) return;
+    close();
+  };
+
+  // IMPORTANT: on écoute le clic sur tout l’overlay
+  overlay.addEventListener("click", onOverlayClick);
 }
 
 function onFlowerClick(flower){
