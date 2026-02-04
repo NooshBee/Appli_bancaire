@@ -347,6 +347,42 @@ body{
   100% { opacity:0; transform: translate(var(--dx), var(--dy)) scale(1.2) rotate(var(--rot)); }
 }
 
+/* ===== Bouquet overlay (Option A) ===== */
+.bouquet{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 20;
+}
+
+.bouquetWrap{ display:grid; place-items:center; }
+
+.bouquetCard{
+  width:min(520px, 92vw);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  padding: 16px;
+  text-align:center;
+}
+
+.bouquetTitle{
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.bouquetMsg{
+  color: rgba(255,255,255,0.88);
+  font-size: 1rem;
+}
+
 /* ===== Special bougain overlay ===== */
 .card.good{
   animation: goodPop 550ms ease-out both;
@@ -360,6 +396,7 @@ body{
   100% { transform: scale(1); }
 }
 
+/* ===== Auto inflate after last tap ===== */
 @keyframes autoInflate {
   0%   { transform: scale(var(--box-scale, 1)); }
   70%  { transform: scale(1.25); }
