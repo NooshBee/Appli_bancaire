@@ -1,3 +1,12 @@
+window.onerror = function (msg, url, line, col, err) {
+  const d = document.createElement("div");
+  d.style.cssText = "position:fixed;left:10px;right:10px;bottom:10px;z-index:999999;padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.8);color:#fff;font:14px -apple-system;line-height:1.35";
+  d.textContent = `ERREUR JS: ${msg} (ligne ${line})`;
+  document.body.appendChild(d);
+};
+
+
+
 // ======================
 // CONFIG
 // ======================
