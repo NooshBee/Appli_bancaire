@@ -6,7 +6,6 @@ window.onerror = function (msg, url, line, col, err) {
 };
 
 
-
 // ======================
 // CONFIG
 // ======================
