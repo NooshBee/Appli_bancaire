@@ -67,13 +67,7 @@
 
 <script src="script.js?v=1000" onload="window.SCRIPT_LOADED=true"></script>
 
-<script>
-  setTimeout(() => {
-    const b = document.createElement("div");
-    b.textContent = window.SCRIPT_LOADED ? "script.js chargé ✅" : "script.js PAS chargé ❌";
-    b.style.cssText = "position:fixed;top:55px;left:10px;z-index:99999;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.7);color:#fff;font:14px -apple-system";
-    document.body.appendChild(b);
-  }, 800);
-</script>
+<script src="script.js?v=999"></script>
+
 </body>
 </html>
