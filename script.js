@@ -128,20 +128,12 @@ function stopProposalTimer(){
 
 // Zone “carte d’accueil” : on rebondit dessus
 function getCardRect(){
-  // priorité à .topCard si tu l’as, sinon .top
   const card = document.querySelector(".topCard") || document.querySelector(".top");
   if (!card) return null;
 
   const r = card.getBoundingClientRect();
-
-  // petit “padding” de sécurité autour
   const pad = 10;
-  return {
-    left: r.left - pad,
-    right: r.right + pad,
-    top: r.top - pad,
-    bottom: r.bottom + pad
-  };
+  return { left: r.left - pad, right: r.right + pad, top: r.top - pad, bottom: r.bottom + pad };
 }
 
 // Test cercle vs rect (simple)
@@ -160,12 +152,10 @@ function buildField(){
   field.innerHTML = "";
   flowersState.length = 0;
 
-  // Liste : 3 de chaque
   const list = [];
   FLOWERS.forEach(f => { for (let i=0;i<MIN_PER_VARIETY;i++) list.push(f); });
   shuffleInPlace(list);
 
-  // positions initiales aléatoires
   const w = window.innerWidth;
   const h = window.innerHeight;
 
@@ -173,7 +163,6 @@ function buildField(){
     const flower = list[i];
     const el = createFlowerElement(flower);
 
-    // position initiale (évite la carte)
     let x = rand(RADIUS, w - RADIUS);
     let y = rand(RADIUS, h - RADIUS);
 
@@ -185,7 +174,6 @@ function buildField(){
       tries++;
     }
 
-    // vitesse
     const speed = rand(BOUNCE_SPEED_MIN, BOUNCE_SPEED_MAX);
     const ang = rand(0, Math.PI * 2);
     const vx = Math.cos(ang) * speed;
@@ -205,7 +193,6 @@ function createFlowerElement(flower){
   el.type = "button";
   el.setAttribute("aria-label", flower.label);
 
-  // IMPORTANT : on coupe l’animation CSS drift
   el.style.animation = "none";
 
   const img = document.createElement("img");
@@ -222,7 +209,6 @@ function createFlowerElement(flower){
 }
 
 function renderOne(s){
-  // on dessine via transform pour éviter des reflows
   s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0) translate(-50%, -50%)`;
 }
 
@@ -235,11 +221,10 @@ function startAnimation(){
 
   const loop = (t) => {
     if (!lastT) lastT = t;
-    const dt = Math.min(0.033, (t - lastT) / 1000); // cap 33ms
+    const dt = Math.min(0.033, (t - lastT) / 1000);
     lastT = t;
 
     stepPhysics(dt);
-
     animId = requestAnimationFrame(loop);
   };
 
@@ -257,43 +242,28 @@ function stepPhysics(dt){
   const rect = getCardRect();
 
   for (const s of flowersState){
-    // si écran overlay/proposal/gift: on peut laisser tourner, ou figer
-    // ici on laisse tourner (plus joli). Si tu veux figer: if (isLocked) continue;
-
     let nx = s.x + s.vx * dt;
     let ny = s.y + s.vy * dt;
 
-    // rebond bords écran
     if (nx < RADIUS){ nx = RADIUS; s.vx *= -1; }
     if (nx > w - RADIUS){ nx = w - RADIUS; s.vx *= -1; }
     if (ny < RADIUS){ ny = RADIUS; s.vy *= -1; }
     if (ny > h - RADIUS){ ny = h - RADIUS; s.vy *= -1; }
 
-    // rebond sur carte (si existe)
     if (rect && circleIntersectsRect(nx, ny, RADIUS, rect)){
-      // on choisit l’axe de rebond selon d’où vient le choc
       const prevX = s.x;
       const prevY = s.y;
 
-      // essaie inverser X
       const tryX = { x: prevX - s.vx * dt, y: ny };
       const hitX = circleIntersectsRect(tryX.x, tryX.y, RADIUS, rect);
 
-      // essaie inverser Y
       const tryY = { x: nx, y: prevY - s.vy * dt };
       const hitY = circleIntersectsRect(tryY.x, tryY.y, RADIUS, rect);
 
-      if (!hitX && hitY){
-        s.vx *= -1;
-      } else if (hitX && !hitY){
-        s.vy *= -1;
-      } else {
-        // si ambigu, inverse les deux
-        s.vx *= -1;
-        s.vy *= -1;
-      }
+      if (!hitX && hitY) s.vx *= -1;
+      else if (hitX && !hitY) s.vy *= -1;
+      else { s.vx *= -1; s.vy *= -1; }
 
-      // recule un tout petit peu pour sortir de la zone
       nx = s.x + s.vx * dt * 1.2;
       ny = s.y + s.vy * dt * 1.2;
     }
@@ -326,15 +296,18 @@ function showOverlay(flower, onDone){
   clearTimers();
 
   const card = overlay.querySelector(".card");
+  if (!card) return;
 
-  // Indication utilisateur (différente si c’est la bonne fleur)
-const hint = overlay.querySelector(".hint");
-const isTarget = (flower.id === TARGET_ID);
+  // Si tu n’as plus <p class="hint"> dans le HTML, on le crée proprement
+  let hint = overlay.querySelector(".hint");
+  if (!hint){
+    hint = document.createElement("p");
+    hint.className = "hint";
+    card.appendChild(hint);
+  }
 
-if (hint){
-  hint.innerHTML = isTarget
-    ? "Bien joué sexy ! 🥳😂"
-    : "👆🏾 Touche la carte pour réessayer 👆🏾";
+  const isTarget = (flower.id === TARGET_ID);
+  hint.innerHTML = isTarget ? "Bien joué sexy ! 🥳😂" : "👆🏾 Touche la carte pour réessayer 👆🏾";
 
   const close = () => {
     overlay.classList.add("hidden");
@@ -343,7 +316,6 @@ if (hint){
     if (typeof onDone === "function") onDone();
   };
 
-  // 👉 fermeture UNIQUEMENT en touchant la carte
   card.addEventListener("pointerdown", close);
   card.addEventListener("touchstart", close, { passive: true });
 }
@@ -354,13 +326,10 @@ function onFlowerClick(flower){
   const isTarget = (flower.id === TARGET_ID);
 
   if (!isTarget){
-    showOverlay(flower, () => {
-      resetToHome();
-    });
+    showOverlay(flower, () => resetToHome());
     return;
   }
 
-  // bougain
   showOverlay(flower, () => {
     hideAllScreens();
     if (topHeader) topHeader.classList.add("hideTop");
@@ -390,12 +359,10 @@ function setupTapToOpenGift(includeBougain){
   let giftBtn = document.getElementById("giftBtn");
   if (!giftBtn) return;
 
-  // reset CSS vars
   giftBtn.style.setProperty("--lid-rot", "0deg");
   giftBtn.style.setProperty("--lid-up", "0px");
   giftBtn.style.animation = "none";
 
-  // éviter empilement listeners
   const newBtn = giftBtn.cloneNode(true);
   giftBtn.parentNode.replaceChild(newBtn, giftBtn);
 
@@ -464,7 +431,6 @@ function launchBurst(includeBougain){
 btnYesWith.addEventListener("click", () => playGiftSequence(true));
 btnYesWithout.addEventListener("click", () => playGiftSequence(false));
 
-// rebuild sur resize/orientation
 window.addEventListener("resize", () => buildField());
 
 // ======================
