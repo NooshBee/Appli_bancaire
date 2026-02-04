@@ -1,20 +1,15 @@
-window.onerror = function (msg, url, line, col, err) {
-  const d = document.createElement("div");
-  d.style.cssText = "position:fixed;left:10px;right:10px;bottom:10px;z-index:999999;padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.8);color:#fff;font:14px -apple-system;line-height:1.35";
-  d.textContent = `ERREUR JS: ${msg} (ligne ${line})`;
-  document.body.appendChild(d);
-};
-
-
 // ======================
 // CONFIG
 // ======================
 const TARGET_ID = "bougain";
 const MESSAGE_SECONDS = 15;
 
-const MIN_PER_VARIETY = 3; // 3 fleurs par variété
-const GRID_COLS = 6;
-const GRID_ROWS = 9; // 6x9 = 54
+const MIN_PER_VARIETY = 3; // 3 de chaque variété => 54
+const FLOW_SIZE = 54;      // taille des bulles (doit matcher ton CSS .flower width/height)
+const RADIUS = FLOW_SIZE / 2;
+
+const BOUNCE_SPEED_MIN = 18; // px/s (lent)
+const BOUNCE_SPEED_MAX = 42; // px/s (plus vivant)
 
 // --- FLOWERS ---
 const FLOWERS = [
@@ -39,7 +34,7 @@ const FLOWERS = [
 ];
 
 // ======================
-// DOM (avec garde-fous)
+// DOM
 // ======================
 const field = document.getElementById("field");
 const overlay = document.getElementById("overlay");
@@ -54,50 +49,25 @@ const countdownEl = document.getElementById("countdown");
 
 const btnYesWith = document.getElementById("btnYesWith");
 const btnYesWithout = document.getElementById("btnYesWithout");
-
 const loveTimerEl = document.getElementById("loveTimer");
 
 const topHeader = document.querySelector(".top");
 
 // ======================
-// DEBUG visible (si crash)
-// ======================
-function fatal(msg){
-  const d = document.createElement("div");
-  d.style.position = "fixed";
-  d.style.left = "12px";
-  d.style.right = "12px";
-  d.style.bottom = "12px";
-  d.style.zIndex = "99999";
-  d.style.padding = "12px 14px";
-  d.style.borderRadius = "14px";
-  d.style.background = "rgba(0,0,0,0.75)";
-  d.style.color = "white";
-  d.style.fontSize = "14px";
-  d.style.lineHeight = "1.3";
-  d.textContent = "Erreur script: " + msg;
-  document.body.appendChild(d);
-}
-
-// éléments indispensables
-if (!field) fatal("Je ne trouve pas #field dans index.html");
-if (!overlay || !proposal || !gift || !burst) fatal("Il manque overlay/proposal/gift/burst dans index.html");
-if (!overlayFlower || !overlayTitle || !overlayText || !countdownEl) fatal("Il manque overlayFlower/overlayTitle/overlayText/countdown dans index.html");
-if (!btnYesWith || !btnYesWithout) fatal("Il manque btnYesWith / btnYesWithout");
-if (!loveTimerEl) fatal("Il manque #loveTimer");
-
-// ======================
 // STATE
 // ======================
-let proposalStart = null;
-let proposalInterval = null;
-
 let overlayTimer = null;
 let countdownTimer = null;
 let isLocked = false;
 
-let openProgress = 0;
-let giftOpened = false;
+let proposalStart = null;
+let proposalInterval = null;
+
+let animId = null;
+let lastT = null;
+
+// 54 fleurs “physiques”
+const flowersState = []; // { flower, el, x, y, vx, vy }
 
 // ======================
 // HELPERS
@@ -118,13 +88,6 @@ function clearTimers(){
   countdownTimer = null;
 }
 
-function safeShowTop(){
-  if (topHeader) topHeader.classList.remove("hideTop");
-}
-function safeHideTop(){
-  if (topHeader) topHeader.classList.add("hideTop");
-}
-
 function hideAllScreens(){
   overlay.classList.add("hidden");
   proposal.classList.add("hidden");
@@ -136,7 +99,7 @@ function resetToHome(){
   clearTimers();
   stopProposalTimer();
   hideAllScreens();
-  safeShowTop();
+  if (topHeader) topHeader.classList.remove("hideTop");
   isLocked = false;
 }
 
@@ -164,82 +127,87 @@ function stopProposalTimer(){
   proposalInterval = null;
 }
 
-// ---- NO-GO ZONE automatic from .topCard ----
-function getNoGoRectPercent(){
-  const card = document.querySelector(".topCard");
-  if (!card) return null; // continue sans zone interdite
+// Zone “carte d’accueil” : on rebondit dessus
+function getCardRect(){
+  // priorité à .topCard si tu l’as, sinon .top
+  const card = document.querySelector(".topCard") || document.querySelector(".top");
+  if (!card) return null;
 
   const r = card.getBoundingClientRect();
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
 
+  // petit “padding” de sécurité autour
+  const pad = 10;
   return {
-    xMin: (r.left / vw) * 100,
-    xMax: (r.right / vw) * 100,
-    yMin: (r.top / vh) * 100,
-    yMax: (r.bottom / vh) * 100,
+    left: r.left - pad,
+    right: r.right + pad,
+    top: r.top - pad,
+    bottom: r.bottom + pad
   };
 }
-function inRect(x, y, rect){
-  return x >= rect.xMin && x <= rect.xMax && y >= rect.yMin && y <= rect.yMax;
+
+// Test cercle vs rect (simple)
+function circleIntersectsRect(cx, cy, radius, rect){
+  const closestX = Math.max(rect.left, Math.min(cx, rect.right));
+  const closestY = Math.max(rect.top, Math.min(cy, rect.bottom));
+  const dx = cx - closestX;
+  const dy = cy - closestY;
+  return (dx*dx + dy*dy) <= radius*radius;
 }
 
 // ======================
-// FLOWERS (54 fixed)
+// BUILD 54 fleurs fixes
 // ======================
 function buildField(){
   field.innerHTML = "";
+  flowersState.length = 0;
 
+  // Liste : 3 de chaque
   const list = [];
-  FLOWERS.forEach(f => {
-    for (let i = 0; i < MIN_PER_VARIETY; i++) list.push(f);
-  });
-
-  // sécurité : si un jour ça ne fait pas 54, on complète
-  while (list.length < GRID_COLS * GRID_ROWS){
-    list.push(FLOWERS[Math.floor(Math.random() * FLOWERS.length)]);
-  }
-
+  FLOWERS.forEach(f => { for (let i=0;i<MIN_PER_VARIETY;i++) list.push(f); });
   shuffleInPlace(list);
 
-  const noGo = getNoGoRectPercent();
+  // positions initiales aléatoires
+  const w = window.innerWidth;
+  const h = window.innerHeight;
 
-  list.slice(0, GRID_COLS * GRID_ROWS).forEach((flower, idx) => {
-    const col = idx % GRID_COLS;
-    const row = Math.floor(idx / GRID_COLS);
+  for (let i=0;i<list.length;i++){
+    const flower = list[i];
+    const el = createFlowerElement(flower);
 
-    const cellW = 100 / GRID_COLS;
-    const cellH = 100 / GRID_ROWS;
+    // position initiale (évite la carte)
+    let x = rand(RADIUS, w - RADIUS);
+    let y = rand(RADIUS, h - RADIUS);
 
-    const baseX = (col + 0.5) * cellW;
-    const baseY = (row + 0.5) * cellH;
-
-    const jitterX = rand(-cellW * 0.18, cellW * 0.18);
-    const jitterY = rand(-cellH * 0.18, cellH * 0.18);
-
-    let x = baseX + jitterX;
-    let y = baseY + jitterY;
-
-    if (noGo){
-      let tries = 0;
-      while (inRect(x, y, noGo) && tries < 25){
-        x = baseX + rand(-cellW * 0.45, cellW * 0.45);
-        y = baseY + rand(-cellH * 0.45, cellH * 0.45);
-        tries++;
-      }
+    const rect = getCardRect();
+    let tries = 0;
+    while (rect && circleIntersectsRect(x, y, RADIUS, rect) && tries < 80){
+      x = rand(RADIUS, w - RADIUS);
+      y = rand(RADIUS, h - RADIUS);
+      tries++;
     }
 
-    spawnFloatingFlower(flower, idx, x, y);
-  });
+    // vitesse
+    const speed = rand(BOUNCE_SPEED_MIN, BOUNCE_SPEED_MAX);
+    const ang = rand(0, Math.PI * 2);
+    const vx = Math.cos(ang) * speed;
+    const vy = Math.sin(ang) * speed;
+
+    flowersState.push({ flower, el, x, y, vx, vy });
+    field.appendChild(el);
+    renderOne({ el, x, y });
+  }
+
+  startAnimation();
 }
 
-function spawnFloatingFlower(flower, slotIndex, xPercent, yPercent){
+function createFlowerElement(flower){
   const el = document.createElement("button");
   el.className = "flower";
   el.type = "button";
   el.setAttribute("aria-label", flower.label);
 
-  el.dataset.slot = String(slotIndex);
+  // IMPORTANT : on coupe l’animation CSS drift
+  el.style.animation = "none";
 
   const img = document.createElement("img");
   img.src = flower.img;
@@ -250,34 +218,91 @@ function spawnFloatingFlower(flower, slotIndex, xPercent, yPercent){
 
   if (flower.id === TARGET_ID) el.classList.add("bougainGlow");
 
-  el.style.left = `${xPercent}%`;
-  el.style.top  = `${yPercent}%`;
+  el.addEventListener("click", () => onFlowerClick(flower));
+  return el;
+}
 
-  // drift réduit
-  el.style.setProperty("--dx1", `${rand(-6, 6)}vw`);
-  el.style.setProperty("--dy1", `${rand(-6, 6)}vh`);
-  el.style.setProperty("--dx2", `${rand(-8, 8)}vw`);
-  el.style.setProperty("--dy2", `${rand(-8, 8)}vh`);
+function renderOne(s){
+  // on dessine via transform pour éviter des reflows
+  s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0) translate(-50%, -50%)`;
+}
 
-  const duration = rand(7, 12);
-  const delay = rand(0, 1.2);
-  el.style.animation = `drift ${duration}s ease-in-out ${delay}s infinite alternate`;
+// ======================
+// ANIMATION (rebonds)
+// ======================
+function startAnimation(){
+  stopAnimation();
+  lastT = null;
 
-  el.addEventListener("click", () => {
-    if (isLocked) return;
+  const loop = (t) => {
+    if (!lastT) lastT = t;
+    const dt = Math.min(0.033, (t - lastT) / 1000); // cap 33ms
+    lastT = t;
 
-    // respawn immédiat même fleur au même endroit
-    const slot = Number(el.dataset.slot);
-    const x = parseFloat(el.style.left);
-    const y = parseFloat(el.style.top);
+    stepPhysics(dt);
 
-    el.remove();
-    spawnFloatingFlower(flower, slot, x, y);
+    animId = requestAnimationFrame(loop);
+  };
 
-    onFlowerClick(flower);
-  });
+  animId = requestAnimationFrame(loop);
+}
 
-  field.appendChild(el);
+function stopAnimation(){
+  if (animId) cancelAnimationFrame(animId);
+  animId = null;
+}
+
+function stepPhysics(dt){
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const rect = getCardRect();
+
+  for (const s of flowersState){
+    // si écran overlay/proposal/gift: on peut laisser tourner, ou figer
+    // ici on laisse tourner (plus joli). Si tu veux figer: if (isLocked) continue;
+
+    let nx = s.x + s.vx * dt;
+    let ny = s.y + s.vy * dt;
+
+    // rebond bords écran
+    if (nx < RADIUS){ nx = RADIUS; s.vx *= -1; }
+    if (nx > w - RADIUS){ nx = w - RADIUS; s.vx *= -1; }
+    if (ny < RADIUS){ ny = RADIUS; s.vy *= -1; }
+    if (ny > h - RADIUS){ ny = h - RADIUS; s.vy *= -1; }
+
+    // rebond sur carte (si existe)
+    if (rect && circleIntersectsRect(nx, ny, RADIUS, rect)){
+      // on choisit l’axe de rebond selon d’où vient le choc
+      const prevX = s.x;
+      const prevY = s.y;
+
+      // essaie inverser X
+      const tryX = { x: prevX - s.vx * dt, y: ny };
+      const hitX = circleIntersectsRect(tryX.x, tryX.y, RADIUS, rect);
+
+      // essaie inverser Y
+      const tryY = { x: nx, y: prevY - s.vy * dt };
+      const hitY = circleIntersectsRect(tryY.x, tryY.y, RADIUS, rect);
+
+      if (!hitX && hitY){
+        s.vx *= -1;
+      } else if (hitX && !hitY){
+        s.vy *= -1;
+      } else {
+        // si ambigu, inverse les deux
+        s.vx *= -1;
+        s.vy *= -1;
+      }
+
+      // recule un tout petit peu pour sortir de la zone
+      nx = s.x + s.vx * dt * 1.2;
+      ny = s.y + s.vy * dt * 1.2;
+    }
+
+    s.x = nx;
+    s.y = ny;
+    renderOne(s);
+  }
 }
 
 // ======================
@@ -286,7 +311,7 @@ function spawnFloatingFlower(flower, slotIndex, xPercent, yPercent){
 function showOverlay(flower, onDone){
   isLocked = true;
   hideAllScreens();
-  safeHideTop();
+  if (topHeader) topHeader.classList.add("hideTop");
 
   overlayFlower.innerHTML = "";
   const big = document.createElement("img");
@@ -309,7 +334,6 @@ function showOverlay(flower, onDone){
   countdownTimer = setInterval(() => {
     remaining -= 1;
     countdownEl.textContent = Math.max(0, remaining);
-    if (remaining <= 0) clearTimers();
   }, 1000);
 
   overlayTimer = setTimeout(() => {
@@ -327,14 +351,14 @@ function onFlowerClick(flower){
   if (!isTarget){
     showOverlay(flower, () => {
       resetToHome();
-      // pas de rebuild ici : les 54 restent en place
     });
     return;
   }
 
+  // bougain
   showOverlay(flower, () => {
     hideAllScreens();
-    safeHideTop();
+    if (topHeader) topHeader.classList.add("hideTop");
     proposal.classList.remove("hidden");
     startProposalTimer();
     isLocked = false;
@@ -347,12 +371,10 @@ function onFlowerClick(flower){
 function playGiftSequence(includeBougain){
   isLocked = true;
   hideAllScreens();
-  safeHideTop();
+  if (topHeader) topHeader.classList.add("hideTop");
   stopProposalTimer();
 
   setTimeout(() => {
-    hideAllScreens();
-    safeHideTop();
     gift.classList.remove("hidden");
     setupTapToOpenGift(includeBougain);
     isLocked = false;
@@ -360,18 +382,20 @@ function playGiftSequence(includeBougain){
 }
 
 function setupTapToOpenGift(includeBougain){
-  openProgress = 0;
-  giftOpened = false;
+  let giftBtn = document.getElementById("giftBtn");
+  if (!giftBtn) return;
 
-  const oldBtn = document.getElementById("giftBtn");
-  if (!oldBtn){ fatal("Je ne trouve pas #giftBtn dans index.html"); return; }
+  // reset CSS vars
+  giftBtn.style.setProperty("--lid-rot", "0deg");
+  giftBtn.style.setProperty("--lid-up", "0px");
+  giftBtn.style.animation = "none";
 
-  oldBtn.style.setProperty("--lid-rot", "0deg");
-  oldBtn.style.setProperty("--lid-up", "0px");
-  oldBtn.style.animation = "none";
+  // éviter empilement listeners
+  const newBtn = giftBtn.cloneNode(true);
+  giftBtn.parentNode.replaceChild(newBtn, giftBtn);
 
-  const newBtn = oldBtn.cloneNode(true);
-  oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+  let openProgress = 0;
+  let giftOpened = false;
 
   newBtn.addEventListener("click", () => {
     if (giftOpened) return;
@@ -435,7 +459,7 @@ function launchBurst(includeBougain){
 btnYesWith.addEventListener("click", () => playGiftSequence(true));
 btnYesWithout.addEventListener("click", () => playGiftSequence(false));
 
-// recalcul si rotation / resize
+// rebuild sur resize/orientation
 window.addEventListener("resize", () => buildField());
 
 // ======================
