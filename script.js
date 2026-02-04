@@ -555,10 +555,10 @@ function launchBurst(includeBougain){
   if (!burst) return;
   burst.innerHTML = "";
 
-  const base = ["💖","✨","💐"];
+  const base = ["🍇","✨","💐"];
   if (includeBougain) base.push("🌸");
 
-  const petalsCount = 40;
+  const petalsCount = 80;
 
   for (let i=0; i<petalsCount; i++){
     const p = document.createElement("div");
