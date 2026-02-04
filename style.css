@@ -358,19 +358,3 @@ body{
   100% { transform: scale(1); }
 }
 
-/* Mini confettis */
-.confetti{
-  position: absolute;
-  left: var(--x);
-  top: -10px;
-  font-size: 20px;
-  opacity: 0;
-  animation: confettiFall 1100ms ease-out forwards;
-  pointer-events: none;
-}
-
-@keyframes confettiFall{
-  0%   { transform: translateY(0) rotate(0deg) scale(0.9); opacity: 0; }
-  10%  { opacity: 1; }
-  100% { transform: translateY(170px) rotate(var(--rot)) scale(1.1); opacity: 0; }
-}
