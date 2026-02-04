@@ -535,4 +535,4 @@ window.addEventListener("resize", () => buildField());
 // INIT
 // ======================
 resetToHome();
-buildField();
+buildField(); 
